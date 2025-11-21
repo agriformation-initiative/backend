@@ -9,6 +9,8 @@ const authRoutes = require('./routes/auth.routes');
 const volunteerRoutes = require('./routes/volunteer.routes');
 const adminRoutes = require('./routes/admin.routes');
 const galleryRoutes = require('./routes/gallery.routes');
+const adminVolunteerCallRoutes = require('./routes/admin/volunteerCall.routes');
+const publicVolunteerCallRoutes = require('./routes/public/volunteerCall.public.routes')
 
 const app = express();
 
@@ -34,6 +36,8 @@ mongoose.connect(process.env.MONGODB_URI, {
 app.use('/api/auth', authRoutes);
 app.use('/api/volunteers', volunteerRoutes);
 app.use('/api/galleries', galleryRoutes);
+app.use('/api/admin/volunteer-calls', adminVolunteerCallRoutes);
+app.use('/api/volunteer-calls', publicVolunteerCallRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Health check
