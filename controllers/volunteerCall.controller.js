@@ -41,11 +41,30 @@ const uploadToCloudinary = (buffer, folder = 'volunteer-calls') => {
   });
 };
 
-// @desc    Get all volunteer calls (admin view)
-// @route   GET /api/admin/volunteer-calls
-// @access  Private (Admin, Superadmin)
+// controllers/volunteerCall.controller.js
+
+// Add this helper function at the top
+const updateExpiredCalls = async () => {
+  const now = new Date();
+  
+  // Find all open calls where deadline has passed
+  await VolunteerCall.updateMany(
+    {
+      status: 'open',
+      deadline: { $lt: now }
+    },
+    {
+      status: 'closed'
+    }
+  );
+};
+
+// Update your getAllVolunteerCalls function
 exports.getAllVolunteerCalls = async (req, res) => {
   try {
+    // Auto-update expired calls before fetching
+    await updateExpiredCalls();
+    
     const { status, category, page = 1, limit = 10 } = req.query;
     
     const query = {};
@@ -79,11 +98,11 @@ exports.getAllVolunteerCalls = async (req, res) => {
   }
 };
 
-// @desc    Get single volunteer call details
-// @route   GET /api/admin/volunteer-calls/:id
-// @access  Private (Admin, Superadmin)
+// Also update getVolunteerCallDetails
 exports.getVolunteerCallDetails = async (req, res) => {
   try {
+    await updateExpiredCalls();
+    
     const call = await VolunteerCall.findById(req.params.id)
       .populate('createdBy', 'fullName email')
       .populate('lastUpdatedBy', 'fullName')

@@ -36,11 +36,24 @@ exports.protect = async (req, res, next) => {
 
     next();
   } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
     return res.status(401).json({
       success: false,
-      message: 'Not authorized to access this route'
+      message: 'Invalid token'
     });
   }
+  if (error.name === 'TokenExpiredError') {
+    return res.status(401).json({
+      success: false,
+      message: 'Token expired'
+    });
+  }
+  // For other errors, use 500
+  return res.status(500).json({
+    success: false,
+    message: 'Server error'
+  });
+}
 };
 
 // Restrict to specific roles

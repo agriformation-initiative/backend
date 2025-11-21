@@ -10,10 +10,10 @@ exports.getPublishedVolunteerCalls = async (req, res) => {
     
     const query = {
       isPublished: true,
-      status: 'open',
-      deadline: { $gte: new Date() }
+      status: { $in: ['open', 'closed'] } // Include both open and closed
     };
     
+    // Only filter by category if it's provided and not 'all'
     if (category && category !== 'all') {
       query.category = category;
     }
@@ -22,7 +22,8 @@ exports.getPublishedVolunteerCalls = async (req, res) => {
       .select('-applications -createdBy -lastUpdatedBy')
       .sort('-createdAt')
       .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .skip((page - 1) * limit)
+      .lean(); // Use lean() for better performance
 
     const count = await VolunteerCall.countDocuments(query);
 
@@ -36,9 +37,11 @@ exports.getPublishedVolunteerCalls = async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Error fetching volunteer calls:', error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Failed to fetch volunteer calls',
+      error: error.message
     });
   }
 };
@@ -69,9 +72,11 @@ exports.getPublicVolunteerCall = async (req, res) => {
       data: { call }
     });
   } catch (error) {
+    console.error('Error fetching volunteer call:', error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Failed to fetch volunteer call',
+      error: error.message
     });
   }
 };
@@ -83,16 +88,31 @@ exports.applyForVolunteer = async (req, res) => {
   try {
     const { fullName, email, phoneNumber, message } = req.body;
 
+    // Validate required fields
+    if (!fullName || !email || !phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide all required fields'
+      });
+    }
+
     const call = await VolunteerCall.findOne({
       _id: req.params.id,
-      isPublished: true,
-      status: 'open'
+      isPublished: true
     });
 
     if (!call) {
       return res.status(404).json({
         success: false,
-        message: 'Volunteer opportunity not found or no longer accepting applications'
+        message: 'Volunteer opportunity not found'
+      });
+    }
+
+    // Only check status if it's explicitly closed
+    if (call.status === 'closed') {
+      return res.status(400).json({
+        success: false,
+        message: 'This opportunity is no longer accepting applications'
       });
     }
 
@@ -119,7 +139,7 @@ exports.applyForVolunteer = async (req, res) => {
       fullName,
       email,
       phoneNumber,
-      message,
+      message: message || '',
       status: 'pending'
     });
 
@@ -133,9 +153,11 @@ exports.applyForVolunteer = async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Error submitting application:', error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Failed to submit application',
+      error: error.message
     });
   }
 };
