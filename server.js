@@ -18,7 +18,7 @@ const app = express();
 app.use(helmet());
 app.use(cors({
   origin: '*', // Allow all origins
-  credentials: false, // Set to false when using wildcard origin
+  credentials: false,  
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
