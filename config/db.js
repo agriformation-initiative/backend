@@ -2,10 +2,7 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    const conn = await mongoose.connect(process.env.MONGODB_URI);
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
 
@@ -20,21 +17,14 @@ const connectDB = async () => {
 // Create default super admin
 const createSuperAdmin = async () => {
   try {
-    const User = require('../models/User');
+    const User = require('../models/User.model');
     const superAdminExists = await User.findOne({ role: 'superadmin' });
 
     if (!superAdminExists) {
-      const bcrypt = require('bcryptjs');
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(
-        process.env.SUPER_ADMIN_PASSWORD || 'Admin@123',
-        salt
-      );
-
       await User.create({
-        name: 'Super Administrator',
+        fullName: 'Super Administrator',
         email: process.env.SUPER_ADMIN_EMAIL || 'superadmin@agriformation.org',
-        password: hashedPassword,
+        password: process.env.SUPER_ADMIN_PASSWORD || 'Admin@123',
         role: 'superadmin',
         isActive: true
       });

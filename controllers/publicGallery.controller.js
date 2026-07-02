@@ -10,10 +10,12 @@ exports.getPublishedGalleries = async (req, res) => {
     console.log('Query params:', { category, page, limit }); // Debug log
     
     const query = { isPublished: true };
-    
-    // Only add category filter if it exists and is not 'all'
+
     if (category && category !== 'all' && category.trim() !== '') {
       query.category = category;
+    } else {
+      // Blog-linked galleries are surfaced via the blog, not the main gallery
+      query.category = { $ne: 'blog_post' };
     }
 
     console.log('MongoDB query:', query); // Debug log
@@ -55,7 +57,7 @@ exports.getFeaturedGalleries = async (req, res) => {
   try {
     console.log('Fetching featured galleries...'); // Debug log
     
-    const galleries = await Gallery.find({ isPublished: true })
+    const galleries = await Gallery.find({ isPublished: true, category: { $ne: 'blog_post' } })
       .select('title description coverImage eventDate location category photoCount viewCount')
       .sort('-eventDate')
       .limit(6)

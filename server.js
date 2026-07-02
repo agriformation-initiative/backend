@@ -10,7 +10,9 @@ const volunteerRoutes = require('./routes/volunteer.routes');
 const adminRoutes = require('./routes/admin.routes');
 const galleryRoutes = require('./routes/gallery.routes');
 const adminVolunteerCallRoutes = require('./routes/admin/volunteerCall.routes');
-const publicVolunteerCallRoutes = require('./routes/public/volunteerCall.public.routes')
+const publicVolunteerCallRoutes = require('./routes/public/volunteerCall.public.routes');
+const adminBlogRoutes = require('./routes/admin/blog.routes');
+const publicBlogRoutes = require('./routes/public/blog.public.routes');
 
 const app = express();
 
@@ -27,10 +29,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose.connect(process.env.MONGODB_URI)
 .then(() => console.log('✅ MongoDB connected successfully'))
 .catch(err => console.error('❌ MongoDB connection error:', err));
 
@@ -40,6 +39,8 @@ app.use('/api/volunteers', volunteerRoutes);
 app.use('/api/galleries', galleryRoutes);
 app.use('/api/admin/volunteer-calls', adminVolunteerCallRoutes);
 app.use('/api/volunteer-calls', publicVolunteerCallRoutes);
+app.use('/api/admin/blog', adminBlogRoutes);
+app.use('/api/blog', publicBlogRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Health check

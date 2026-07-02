@@ -25,8 +25,17 @@ const gallerySchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['farm_excursion', 'workshop', 'community_event', 'training', 'school-garden', 'other'],
+    enum: ['farm_excursion', 'workshop', 'community_event', 'training', 'school-garden', 'other', 'blog_post'],
     default: 'farm_excursion'
+  },
+  source: {
+    type: String,
+    enum: ['manual', 'blog'],
+    default: 'manual'
+  },
+  blogPost: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Blog'
   },
   photos: [{
     url: {

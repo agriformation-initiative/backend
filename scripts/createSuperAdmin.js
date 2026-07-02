@@ -5,7 +5,6 @@
 // Run with: node scripts/createSuperAdmin.js
 
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 const dotenv = require('dotenv');
 const path = require('path');
 const readline = require('readline');
@@ -13,7 +12,7 @@ const readline = require('readline');
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
-const User = require('../models/User');
+const User = require('../models/User.model');
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -23,10 +22,7 @@ const rl = readline.createInterface({
 const createSuperAdmin = async () => {
   try {
     // Connect to MongoDB
-    await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(process.env.MONGODB_URI);
 
     console.log('✅ MongoDB Connected\n');
     console.log('==================== CREATE SUPERADMIN ====================\n');
@@ -36,7 +32,7 @@ const createSuperAdmin = async () => {
     
     if (existingSuperAdmin) {
       console.log('⚠️  A SuperAdmin already exists:');
-      console.log(`   Name: ${existingSuperAdmin.name}`);
+      console.log(`   Name: ${existingSuperAdmin.fullName}`);
       console.log(`   Email: ${existingSuperAdmin.email}\n`);
       
       rl.question('Do you want to create another SuperAdmin? (yes/no): ', async (answer) => {
@@ -96,15 +92,11 @@ const promptForDetails = () => {
             process.exit(1);
           }
 
-          // Hash password
-          const salt = await bcrypt.genSalt(10);
-          const hashedPassword = await bcrypt.hash(password, salt);
-
-          // Create superadmin
+          // Create superadmin (model's pre-save hook handles password hashing)
           const superAdmin = await User.create({
-            name: name.trim(),
+            fullName: name.trim(),
             email: email.toLowerCase().trim(),
-            password: hashedPassword,
+            password: password,
             role: 'superadmin',
             isActive: true
           });
@@ -112,7 +104,7 @@ const promptForDetails = () => {
           console.log('\n✅ SuperAdmin Created Successfully!\n');
           console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           console.log('📋 Account Details:');
-          console.log('   Name:', superAdmin.name);
+          console.log('   Name:', superAdmin.fullName);
           console.log('   Email:', superAdmin.email);
           console.log('   Role:', superAdmin.role);
           console.log('   ID:', superAdmin._id);
