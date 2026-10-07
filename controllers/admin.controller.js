@@ -8,9 +8,9 @@ const User = require('../models/User.model');
 exports.getApplications = async (req, res) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
-    
+
     const query = status ? { status } : {};
-    
+
     const applications = await VolunteerApplication.find(query)
       .sort('-createdAt')
       .limit(limit * 1)
@@ -111,7 +111,7 @@ exports.reviewApplication = async (req, res) => {
 exports.getAllVolunteers = async (req, res) => {
   try {
     const { status, role, page = 1, limit = 10 } = req.query;
-    
+
     const query = {};
     if (status) query.status = status;
     if (role) query.preferredRole = role;
@@ -180,8 +180,8 @@ exports.updateVolunteerStatus = async (req, res) => {
 
     const volunteer = await Volunteer.findByIdAndUpdate(
       id,
-      { 
-        status, 
+      {
+        status,
         reviewNotes: notes,
         reviewedBy: req.user.id,
         reviewedAt: Date.now()
@@ -254,16 +254,14 @@ exports.assignToProgram = async (req, res) => {
 // @access  Private (Admin, Superadmin)
 exports.getDashboardStats = async (req, res) => {
   try {
-    const totalVolunteers = await Volunteer.countDocuments();
-    const activeVolunteers = await Volunteer.countDocuments({ status: 'approved' });
-    const pendingApplications = await VolunteerApplication.countDocuments({ status: 'pending' });
-    const totalHours = await Volunteer.aggregate([
-      { $group: { _id: null, total: { $sum: '$hoursContributed' } } }
-    ]);
-
-    const recentApplications = await VolunteerApplication.find()
-      .sort('-createdAt')
-      .limit(5);
+    const [totalVolunteers, activeVolunteers, pendingApplications, totalHours, recentApplications] =
+      await Promise.all([
+        Volunteer.countDocuments(),
+        Volunteer.countDocuments({ status: 'approved' }),
+        VolunteerApplication.countDocuments({ status: 'pending' }),
+        Volunteer.aggregate([{ $group: { _id: null, total: { $sum: '$hoursContributed' } } }]),
+        VolunteerApplication.find().sort('-createdAt').limit(5).lean(),
+      ]);
 
     res.json({
       success: true,
@@ -293,7 +291,7 @@ exports.getDashboardStats = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   try {
     const { role, isActive, page = 1, limit = 10 } = req.query;
-    
+
     const query = {};
     if (role) query.role = role;
     if (isActive !== undefined) query.isActive = isActive === 'true';

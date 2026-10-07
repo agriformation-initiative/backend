@@ -19,7 +19,16 @@ const generateToken = (id) => {
 // @access  Public (for volunteers) / Private (for admins creating other admins)
 exports.register = async (req, res) => {
   try {
-    const { fullName, email, password, phoneNumber, role } = req.body;
+    const { fullName, password, phoneNumber, role } = req.body;
+    // Coerce to a string so a JSON object like {"$gt": ""} can never reach the query
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+
+    if (!email || typeof password !== 'string' || password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Provide a valid email and a password of at least 6 characters'
+      });
+    }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -77,9 +86,10 @@ exports.register = async (req, res) => {
 // @access  Public
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const password = req.body.password;
 
-    if (!email || !password) {
+    if (!email || typeof password !== 'string' || !password) {
       return res.status(400).json({
         success: false,
         message: 'Please provide email and password'
@@ -135,7 +145,7 @@ exports.login = async (req, res) => {
 exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    
+
     res.json({
       success: true,
       data: { user }

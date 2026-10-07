@@ -7,12 +7,20 @@ const User = require('../models/User.model');
 // @access  Public
 exports.submitApplication = async (req, res) => {
   try {
-    const { fullName, email, preferredRole, aboutYourself } = req.body;
+    const { fullName, preferredRole, aboutYourself } = req.body;
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+
+    if (!fullName || !email || !preferredRole || !aboutYourself) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide your name, email, preferred role and a short note about yourself'
+      });
+    }
 
     // Check if email already has pending application
-    const existingApp = await VolunteerApplication.findOne({ 
-      email, 
-      status: 'pending' 
+    const existingApp = await VolunteerApplication.findOne({
+      email,
+      status: 'pending'
     });
 
     if (existingApp) {

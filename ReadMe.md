@@ -1,9 +1,9 @@
 // ============================================
 // FILE: README.md
 // ============================================
-# Agriformation Initiative - Backend API
+# AgroNext Agricultural Development Initiative - Backend API
 
-Backend system for managing volunteers, applications, and administrative tasks for the Agriformation Initiative.
+Backend system for managing volunteers, applications, and administrative tasks for the AgroNext Agricultural Development Initiative.
 
 ## Features
 
@@ -63,7 +63,7 @@ NODE_ENV=development
 
 5. Create superadmin account
 ```bash
-node utils/seedSuperadmin.js
+npm run create-superadmin
 ```
 
 6. Start the server
@@ -211,5 +211,5 @@ For questions or issues, contact:
 
 ---
 
-Built with ❤️ for Agriformation Initiative
+Built for the AgroNext Agricultural Development Initiative
 Transforming Agricultural Education in Nigeria

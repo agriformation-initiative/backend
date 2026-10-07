@@ -4,16 +4,11 @@ const multer = require('multer');
 const { Readable } = require('stream');
 
 
-// Add this to verify Cloudinary config
-console.log('Cloudinary config loaded:', {
-  cloud_name: cloudinary.config().cloud_name,
-  api_key: cloudinary.config().api_key ? '***' + cloudinary.config().api_key.slice(-4) : 'missing'
-});
 
 // Configure multer to use memory storage
 const storage = multer.memoryStorage();
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
@@ -53,7 +48,7 @@ const uploadToCloudinary = (buffer, folder = 'organization-galleries') => {
 exports.getAllGalleries = async (req, res) => {
   try {
     const { category, isPublished, page = 1, limit = 10 } = req.query;
-    
+
     const query = {};
     if (category) query.category = category;
     if (isPublished !== undefined) query.isPublished = isPublished === 'true';
@@ -184,14 +179,9 @@ exports.updateGallery = async (req, res) => {
 // @desc    Upload photos to gallery
 // @route   POST /api/admin/galleries/:id/photos
 // @access  Private (Admin, Superadmin)
-// In gallery.controller.js - uploadPhotos function
-// In gallery.controller.js - uploadPhotos function
 exports.uploadPhotos = async (req, res) => {
   try {
-    console.log('Request params:', req.params);
-    console.log('Request files:', req.files);
-    console.log('Request body:', req.body);
-    
+
     const gallery = await Gallery.findById(req.params.id);
 
     if (!gallery) {
@@ -208,14 +198,11 @@ exports.uploadPhotos = async (req, res) => {
       });
     }
 
-    console.log('Starting Cloudinary upload for', req.files.length, 'files');
 
     // Upload all files to Cloudinary
     const uploadPromises = req.files.map(async (file, index) => {
       try {
-        console.log(`Uploading file ${index + 1}:`, file.originalname);
         const result = await uploadToCloudinary(file.buffer);
-        console.log(`File ${index + 1} uploaded successfully:`, result.public_id);
         return {
           url: result.secure_url,
           publicId: result.public_id,
@@ -229,8 +216,7 @@ exports.uploadPhotos = async (req, res) => {
     });
 
     const uploadedPhotos = await Promise.all(uploadPromises);
-    console.log('All files uploaded successfully');
-    
+
     gallery.photos.push(...uploadedPhotos);
     gallery.lastUpdatedBy = req.user.id;
 
@@ -473,7 +459,7 @@ exports.deleteGallery = async (req, res) => {
     }
 
     // Delete all photos from Cloudinary
-    const deletePromises = gallery.photos.map(photo => 
+    const deletePromises = gallery.photos.map(photo =>
       cloudinary.uploader.destroy(photo.publicId)
     );
     await Promise.all(deletePromises);
@@ -502,21 +488,17 @@ exports.deleteGallery = async (req, res) => {
 // @access  Private (Admin, Superadmin)
 exports.getGalleryStats = async (req, res) => {
   try {
-    const totalGalleries = await Gallery.countDocuments();
-    const publishedGalleries = await Gallery.countDocuments({ isPublished: true });
-    
-    const totalPhotos = await Gallery.aggregate([
-      { $project: { photoCount: { $size: '$photos' } } },
-      { $group: { _id: null, total: { $sum: '$photoCount' } } }
-    ]);
-
-    const totalViews = await Gallery.aggregate([
-      { $group: { _id: null, total: { $sum: '$viewCount' } } }
-    ]);
-
-    const categoryCounts = await Gallery.aggregate([
-      { $group: { _id: '$category', count: { $sum: 1 } } }
-    ]);
+    const [totalGalleries, publishedGalleries, totalPhotos, totalViews, categoryCounts] =
+      await Promise.all([
+        Gallery.countDocuments(),
+        Gallery.countDocuments({ isPublished: true }),
+        Gallery.aggregate([
+          { $project: { photoCount: { $size: '$photos' } } },
+          { $group: { _id: null, total: { $sum: '$photoCount' } } }
+        ]),
+        Gallery.aggregate([{ $group: { _id: null, total: { $sum: '$viewCount' } } }]),
+        Gallery.aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }]),
+      ]);
 
     res.json({
       success: true,

@@ -1,42 +1,45 @@
 const Gallery = require('../models/Gallery.model');
 
+const pageParams = (query, defaultLimit) => ({
+  page: Math.max(parseInt(query.page) || 1, 1),
+  limit: Math.min(Math.max(parseInt(query.limit) || defaultLimit, 1), 50),
+});
+
 // @desc    Get all published galleries (public)
 // @route   GET /api/galleries/public
 // @access  Public
 exports.getPublishedGalleries = async (req, res) => {
   try {
-    const { category, page = 1, limit = 12 } = req.query;
-    
-    console.log('Query params:', { category, page, limit }); // Debug log
-    
+    const { category } = req.query;
+    const { page, limit } = pageParams(req.query, 12);
+
+
     const query = { isPublished: true };
 
     if (category && category !== 'all' && category.trim() !== '') {
-      query.category = category;
+      query.category = String(category);
     } else {
       // Blog-linked galleries are surfaced via the blog, not the main gallery
       query.category = { $ne: 'blog_post' };
     }
 
-    console.log('MongoDB query:', query); // Debug log
 
     const galleries = await Gallery.find(query)
       .select('title description coverImage eventDate location category photoCount viewCount createdAt')
       .sort('-eventDate')
-      .limit(limit * 1)
+      .limit(limit)
       .skip((page - 1) * limit)
       .lean(); // Add .lean() for better performance
 
     const count = await Gallery.countDocuments(query);
 
-    console.log(`Found ${galleries.length} galleries out of ${count} total`); // Debug log
 
     res.json({
       success: true,
       data: {
         galleries,
         totalPages: Math.ceil(count / limit),
-        currentPage: parseInt(page),
+        currentPage: page,
         total: count
       }
     });
@@ -45,7 +48,7 @@ exports.getPublishedGalleries = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message,
-      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      
     });
   }
 };
@@ -55,15 +58,13 @@ exports.getPublishedGalleries = async (req, res) => {
 // @access  Public
 exports.getFeaturedGalleries = async (req, res) => {
   try {
-    console.log('Fetching featured galleries...'); // Debug log
-    
+
     const galleries = await Gallery.find({ isPublished: true, category: { $ne: 'blog_post' } })
       .select('title description coverImage eventDate location category photoCount viewCount')
       .sort('-eventDate')
       .limit(6)
       .lean();
 
-    console.log(`Found ${galleries.length} featured galleries`); // Debug log
 
     res.json({
       success: true,
@@ -74,7 +75,7 @@ exports.getFeaturedGalleries = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message,
-      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      
     });
   }
 };
@@ -124,7 +125,7 @@ exports.getGalleryById = async (req, res) => {
 exports.getGalleriesByCategory = async (req, res) => {
   try {
     const { category } = req.params;
-    const { page = 1, limit = 12 } = req.query;
+    const { page, limit } = pageParams(req.query, 12);
 
     // Validate category
     const validCategories = ['farm_excursion', 'workshop', 'community_event', 'training', 'other'];
@@ -141,7 +142,7 @@ exports.getGalleriesByCategory = async (req, res) => {
     })
       .select('title description coverImage eventDate location photoCount')
       .sort('-eventDate')
-      .limit(limit * 1)
+      .limit(limit)
       .skip((page - 1) * limit)
       .lean();
 
@@ -152,7 +153,7 @@ exports.getGalleriesByCategory = async (req, res) => {
       data: {
         galleries,
         totalPages: Math.ceil(count / limit),
-        currentPage: parseInt(page),
+        currentPage: page,
         total: count
       }
     });

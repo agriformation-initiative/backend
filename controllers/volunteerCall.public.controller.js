@@ -6,7 +6,9 @@ const VolunteerCall = require('../models/VolunteerCall.model');
 // @access  Public
 exports.getPublishedVolunteerCalls = async (req, res) => {
   try {
-    const { category, page = 1, limit = 12 } = req.query;
+    const category = typeof req.query.category === 'string' ? req.query.category : undefined;
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 12, 1), 50);
     
     const query = {
       isPublished: true,
@@ -18,21 +20,22 @@ exports.getPublishedVolunteerCalls = async (req, res) => {
       query.category = category;
     }
 
-    const calls = await VolunteerCall.find(query)
-      .select('-applications -createdBy -lastUpdatedBy')
-      .sort('-createdAt')
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .lean(); // Use lean() for better performance
-
-    const count = await VolunteerCall.countDocuments(query);
+    const [calls, count] = await Promise.all([
+      VolunteerCall.find(query)
+        .select('-applications -createdBy -lastUpdatedBy')
+        .sort('-createdAt')
+        .limit(limit)
+        .skip((page - 1) * limit)
+        .lean(),
+      VolunteerCall.countDocuments(query),
+    ]);
 
     res.json({
       success: true,
       data: {
         calls,
         totalPages: Math.ceil(count / limit),
-        currentPage: parseInt(page),
+        currentPage: page,
         total: count
       }
     });
@@ -40,8 +43,7 @@ exports.getPublishedVolunteerCalls = async (req, res) => {
     console.error('Error fetching volunteer calls:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch volunteer calls',
-      error: error.message
+      message: 'Failed to fetch volunteer calls'
     });
   }
 };
@@ -51,10 +53,14 @@ exports.getPublishedVolunteerCalls = async (req, res) => {
 // @access  Public
 exports.getPublicVolunteerCall = async (req, res) => {
   try {
-    const call = await VolunteerCall.findOne({
-      _id: req.params.id,
-      isPublished: true
-    }).select('-applications.user -createdBy -lastUpdatedBy');
+    // Applicant details are private: never send the applications array to the public
+    const call = await VolunteerCall.findOneAndUpdate(
+      { _id: req.params.id, isPublished: true },
+      { $inc: { viewCount: 1 } },
+      { new: true }
+    )
+      .select('-applications -createdBy -lastUpdatedBy')
+      .lean();
 
     if (!call) {
       return res.status(404).json({
@@ -62,10 +68,6 @@ exports.getPublicVolunteerCall = async (req, res) => {
         message: 'Volunteer call not found'
       });
     }
-
-    // Increment view count
-    call.viewCount += 1;
-    await call.save();
 
     res.json({
       success: true,
@@ -75,8 +77,7 @@ exports.getPublicVolunteerCall = async (req, res) => {
     console.error('Error fetching volunteer call:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch volunteer call',
-      error: error.message
+      message: 'Failed to fetch volunteer call'
     });
   }
 };
@@ -86,7 +87,8 @@ exports.getPublicVolunteerCall = async (req, res) => {
 // @access  Public
 exports.applyForVolunteer = async (req, res) => {
   try {
-    const { fullName, email, phoneNumber, message } = req.body;
+    const { fullName, phoneNumber, message } = req.body;
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
 
     // Validate required fields
     if (!fullName || !email || !phoneNumber) {
@@ -125,7 +127,7 @@ exports.applyForVolunteer = async (req, res) => {
     }
 
     // Check if user already applied (by email)
-    const alreadyApplied = call.applications.some(app => app.email === email);
+    const alreadyApplied = call.applications.some(app => app.email?.toLowerCase() === email);
     if (alreadyApplied) {
       return res.status(400).json({
         success: false,
@@ -156,8 +158,7 @@ exports.applyForVolunteer = async (req, res) => {
     console.error('Error submitting application:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to submit application',
-      error: error.message
+      message: 'Failed to submit application'
     });
   }
 };

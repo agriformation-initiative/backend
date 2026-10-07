@@ -46,7 +46,7 @@ const uploadToCloudinary = (buffer, folder = 'volunteer-calls') => {
 // Add this helper function at the top
 const updateExpiredCalls = async () => {
   const now = new Date();
-  
+
   // Find all open calls where deadline has passed
   await VolunteerCall.updateMany(
     {
@@ -64,9 +64,9 @@ exports.getAllVolunteerCalls = async (req, res) => {
   try {
     // Auto-update expired calls before fetching
     await updateExpiredCalls();
-    
+
     const { status, category, page = 1, limit = 10 } = req.query;
-    
+
     const query = {};
     if (status) query.status = status;
     if (category) query.category = category;
@@ -102,7 +102,7 @@ exports.getAllVolunteerCalls = async (req, res) => {
 exports.getVolunteerCallDetails = async (req, res) => {
   try {
     await updateExpiredCalls();
-    
+
     const call = await VolunteerCall.findById(req.params.id)
       .populate('createdBy', 'fullName email')
       .populate('lastUpdatedBy', 'fullName')
@@ -299,7 +299,7 @@ exports.updateStatus = async (req, res) => {
 
     const call = await VolunteerCall.findByIdAndUpdate(
       req.params.id,
-      { 
+      {
         status,
         lastUpdatedBy: req.user.id
       },
@@ -412,24 +412,19 @@ exports.deleteVolunteerCall = async (req, res) => {
 // @access  Private (Admin, Superadmin)
 exports.getVolunteerCallStats = async (req, res) => {
   try {
-    const totalCalls = await VolunteerCall.countDocuments();
-    const openCalls = await VolunteerCall.countDocuments({ status: 'open', isPublished: true });
-    const closedCalls = await VolunteerCall.countDocuments({ status: 'closed' });
-
-    const totalApplications = await VolunteerCall.aggregate([
-      { $unwind: '$applications' },
-      { $count: 'total' }
-    ]);
-
-    const acceptedApplications = await VolunteerCall.aggregate([
-      { $unwind: '$applications' },
-      { $match: { 'applications.status': 'accepted' } },
-      { $count: 'total' }
-    ]);
-
-    const categoryStats = await VolunteerCall.aggregate([
-      { $group: { _id: '$category', count: { $sum: 1 } } }
-    ]);
+    const [totalCalls, openCalls, closedCalls, totalApplications, acceptedApplications, categoryStats] =
+      await Promise.all([
+        VolunteerCall.countDocuments(),
+        VolunteerCall.countDocuments({ status: 'open', isPublished: true }),
+        VolunteerCall.countDocuments({ status: 'closed' }),
+        VolunteerCall.aggregate([{ $unwind: '$applications' }, { $count: 'total' }]),
+        VolunteerCall.aggregate([
+          { $unwind: '$applications' },
+          { $match: { 'applications.status': 'accepted' } },
+          { $count: 'total' }
+        ]),
+        VolunteerCall.aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }]),
+      ]);
 
     res.json({
       success: true,

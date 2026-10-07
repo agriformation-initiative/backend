@@ -1,28 +1,35 @@
 const Blog = require('../models/Blog.model');
 
+const pageParams = (query, defaultLimit) => ({
+  page: Math.max(parseInt(query.page) || 1, 1),
+  limit: Math.min(Math.max(parseInt(query.limit) || defaultLimit, 1), 50),
+});
+
 // @desc  Get all published posts (paginated)
 // @route GET /api/blog
 exports.getPublishedPosts = async (req, res) => {
   try {
-    const { category, tag, page = 1, limit = 9 } = req.query;
+    const { category, tag } = req.query;
+    const { page, limit } = pageParams(req.query, 9);
 
     const query = { status: 'published' };
-    if (category) query.category = category;
-    if (tag) query.tags = tag;
+    if (typeof category === 'string') query.category = category;
+    if (typeof tag === 'string') query.tags = tag;
 
-    const posts = await Blog.find(query)
-      .populate('author', 'fullName')
-      .select('-content -contentImages')
-      .sort('-publishedAt')
-      .skip((page - 1) * limit)
-      .limit(Number(limit))
-      .lean();
-
-    const total = await Blog.countDocuments(query);
+    const [posts, total] = await Promise.all([
+      Blog.find(query)
+        .populate('author', 'fullName')
+        .select('-content -contentImages')
+        .sort('-publishedAt')
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Blog.countDocuments(query),
+    ]);
 
     res.json({
       success: true,
-      data: { posts, total, totalPages: Math.ceil(total / limit), currentPage: Number(page) },
+      data: { posts, total, totalPages: Math.ceil(total / limit), currentPage: page },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
