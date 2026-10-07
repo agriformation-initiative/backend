@@ -79,6 +79,12 @@ POST   /api/auth/register          - Register new user (volunteer)
 POST   /api/auth/login             - Login
 GET    /api/auth/me                - Get current user
 POST   /api/auth/register-admin    - Create admin (superadmin only)
+POST   /api/auth/forgot-password    - Email a password reset link
+POST   /api/auth/reset-password     - Set a new password with the emailed token
+PUT    /api/auth/change-password    - Change password (signed in)
+POST   /api/inquiries               - Contact message, school request or partner enquiry (public)
+GET    /api/admin/inquiries         - List enquiries (admin)
+PUT    /api/admin/inquiries/:id/status - Update enquiry status (admin)
 ```
 
 ### Volunteers (Public & Private)

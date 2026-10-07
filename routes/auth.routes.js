@@ -1,5 +1,7 @@
 const express = require('express');
-const { register, login, getMe } = require('../controllers/auth.controller');
+const {
+  register, login, getMe, forgotPassword, resetPassword, changePassword
+} = require('../controllers/auth.controller');
 const { protect, authorize } = require('../middleware/auth.middleware');
 
 const router = express.Router();
@@ -7,6 +9,9 @@ const router = express.Router();
 router.post('/register', register);
 router.post('/login', login);
 router.get('/me', protect, getMe);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
+router.put('/change-password', protect, changePassword);
 
 // Create admin (superadmin only)
 router.post('/register-admin', protect, authorize('superadmin'), register);

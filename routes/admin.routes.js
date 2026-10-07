@@ -12,6 +12,8 @@ const {
   updateUserRole,
   toggleUserStatus
 } = require('../controllers/admin.controller');
+const { getInquiries, updateInquiryStatus } = require('../controllers/inquiry.controller');
+const { updateSettings } = require('../controllers/settings.controller');
 const { protect, authorize } = require('../middleware/auth.middleware');
 
 const router = express.Router();
@@ -27,6 +29,9 @@ router.get('/volunteers/:id', authorize('admin', 'superadmin'), getVolunteerDeta
 router.put('/volunteers/:id/status', authorize('admin', 'superadmin'), updateVolunteerStatus);
 router.post('/volunteers/:id/assign', authorize('admin', 'superadmin'), assignToProgram);
 router.get('/dashboard/stats', authorize('admin', 'superadmin'), getDashboardStats);
+router.put('/settings', authorize('admin', 'superadmin'), updateSettings);
+router.get('/inquiries', authorize('admin', 'superadmin'), getInquiries);
+router.put('/inquiries/:id/status', authorize('admin', 'superadmin'), updateInquiryStatus);
 
 // Superadmin only routes
 router.get('/users', authorize('superadmin'), getAllUsers);

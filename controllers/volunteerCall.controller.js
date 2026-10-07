@@ -1,5 +1,6 @@
 // controllers/volunteerCall.controller.js
 const VolunteerCall = require('../models/VolunteerCall.model');
+const emails = require('../utils/emails');
 const cloudinary = require('../config/cloudinary');
 const multer = require('multer');
 const { Readable } = require('stream');
@@ -359,9 +360,13 @@ exports.updateApplicationStatus = async (req, res) => {
       });
     }
 
+    const changed = application.status !== status;
     application.status = status;
     call.lastUpdatedBy = req.user.id;
     await call.save();
+
+    // Tell the applicant about a decision, but not when it is just moved back to pending
+    if (changed && status !== 'pending') emails.callApplicationDecision(call, application, status);
 
     res.json({
       success: true,

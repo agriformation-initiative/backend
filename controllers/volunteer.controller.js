@@ -1,6 +1,7 @@
 const Volunteer = require('../models/Volunteer.model');
 const VolunteerApplication = require('../models/VolunteerApplication.model');
 const User = require('../models/User.model');
+const emails = require('../utils/emails');
 
 // @desc    Submit volunteer application (public)
 // @route   POST /api/volunteers/apply
@@ -36,6 +37,9 @@ exports.submitApplication = async (req, res) => {
       preferredRole,
       aboutYourself
     });
+
+    emails.volunteerApplicationReceived(application);
+    emails.acknowledge(application.email, application.fullName, 'volunteer application');
 
     res.status(201).json({
       success: true,

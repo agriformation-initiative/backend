@@ -14,6 +14,8 @@ const adminVolunteerCallRoutes = require('./routes/admin/volunteerCall.routes');
 const publicVolunteerCallRoutes = require('./routes/public/volunteerCall.public.routes');
 const adminBlogRoutes = require('./routes/admin/blog.routes');
 const publicBlogRoutes = require('./routes/public/blog.public.routes');
+const inquiryRoutes = require('./routes/inquiry.routes');
+const settingsRoutes = require('./routes/settings.routes');
 
 const app = express();
 
@@ -45,6 +47,9 @@ app.use('/api/auth/login', limiter(10, 15));
 app.use('/api/auth/register', limiter(10, 60));
 app.use('/api/volunteers/apply', limiter(10, 60));
 app.use('/api/volunteer-calls/:id/apply', limiter(20, 60));
+app.use('/api/auth/forgot-password', limiter(5, 60));
+app.use('/api/auth/reset-password', limiter(10, 60));
+app.use('/api/inquiries', limiter(10, 60));
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI)
@@ -59,6 +64,8 @@ app.use('/api/admin/volunteer-calls', adminVolunteerCallRoutes);
 app.use('/api/volunteer-calls', publicVolunteerCallRoutes);
 app.use('/api/admin/blog', adminBlogRoutes);
 app.use('/api/blog', publicBlogRoutes);
+app.use('/api/inquiries', inquiryRoutes);
+app.use('/api/settings', settingsRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Health check

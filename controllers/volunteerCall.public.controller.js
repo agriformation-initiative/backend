@@ -1,5 +1,6 @@
 // controllers/public/volunteerCall.public.controller.js
 const VolunteerCall = require('../models/VolunteerCall.model');
+const emails = require('../utils/emails');
 
 // @desc    Get all published volunteer calls (public view)
 // @route   GET /api/volunteer-calls
@@ -9,12 +10,12 @@ exports.getPublishedVolunteerCalls = async (req, res) => {
     const category = typeof req.query.category === 'string' ? req.query.category : undefined;
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit) || 12, 1), 50);
-    
+
     const query = {
       isPublished: true,
       status: { $in: ['open', 'closed'] } // Include both open and closed
     };
-    
+
     // Only filter by category if it's provided and not 'all'
     if (category && category !== 'all') {
       query.category = category;
@@ -146,6 +147,10 @@ exports.applyForVolunteer = async (req, res) => {
     });
 
     await call.save();
+
+    const saved = call.applications[call.applications.length - 1];
+    emails.callApplicationReceived(call, saved);
+    emails.acknowledge(saved.email, saved.fullName, 'volunteer application');
 
     res.status(201).json({
       success: true,

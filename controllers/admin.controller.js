@@ -1,6 +1,9 @@
+const crypto = require('crypto');
 const Volunteer = require('../models/Volunteer.model');
 const VolunteerApplication = require('../models/VolunteerApplication.model');
 const User = require('../models/User.model');
+const Inquiry = require('../models/Inquiry.model');
+const emails = require('../utils/emails');
 
 // @desc    Get all volunteer applications
 // @route   GET /api/admin/applications
@@ -60,37 +63,53 @@ exports.reviewApplication = async (req, res) => {
       });
     }
 
+    // Create the account first, so a failure here leaves the application pending instead of half done
+    let setPasswordToken = null;
+    if (status === 'accepted') {
+      let user = await User.findOne({ email: application.email });
+
+      if (user && user.role !== 'volunteer') {
+        return res.status(400).json({
+          success: false,
+          message: 'This email already belongs to an admin account'
+        });
+      }
+
+      if (!user) {
+        // Nobody ever sees this password. The volunteer chooses their own from the emailed link.
+        user = await User.create({
+          fullName: application.fullName,
+          email: application.email,
+          password: crypto.randomBytes(24).toString('hex'),
+          role: 'volunteer',
+          createdBy: req.user.id
+        });
+      }
+
+      const hasProfile = await Volunteer.exists({ user: user._id });
+      if (!hasProfile) {
+        await Volunteer.create({
+          user: user._id,
+          preferredRole: application.preferredRole,
+          aboutYourself: application.aboutYourself,
+          status: 'approved',
+          reviewedBy: req.user.id,
+          reviewedAt: Date.now()
+        });
+      }
+
+      setPasswordToken = user.createPasswordResetToken(7 * 24 * 60);
+      await user.save({ validateBeforeSave: false });
+    }
+
     application.status = status;
     application.notes = notes;
     application.processedBy = req.user.id;
     application.processedAt = Date.now();
-
     await application.save();
 
-    // If accepted, create user and volunteer profile
-    if (status === 'accepted') {
-      // Generate temporary password
-      const tempPassword = Math.random().toString(36).slice(-8);
-
-      const user = await User.create({
-        fullName: application.fullName,
-        email: application.email,
-        password: tempPassword,
-        role: 'volunteer',
-        createdBy: req.user.id
-      });
-
-      await Volunteer.create({
-        user: user._id,
-        preferredRole: application.preferredRole,
-        aboutYourself: application.aboutYourself,
-        status: 'approved',
-        reviewedBy: req.user.id,
-        reviewedAt: Date.now()
-      });
-
-      // TODO: Send email with credentials
-    }
+    if (status === 'accepted') emails.applicationAccepted(application, setPasswordToken);
+    else emails.applicationRejected(application);
 
     res.json({
       success: true,
@@ -254,13 +273,14 @@ exports.assignToProgram = async (req, res) => {
 // @access  Private (Admin, Superadmin)
 exports.getDashboardStats = async (req, res) => {
   try {
-    const [totalVolunteers, activeVolunteers, pendingApplications, totalHours, recentApplications] =
+    const [totalVolunteers, activeVolunteers, pendingApplications, totalHours, recentApplications, newInquiries] =
       await Promise.all([
         Volunteer.countDocuments(),
         Volunteer.countDocuments({ status: 'approved' }),
         VolunteerApplication.countDocuments({ status: 'pending' }),
         Volunteer.aggregate([{ $group: { _id: null, total: { $sum: '$hoursContributed' } } }]),
         VolunteerApplication.find().sort('-createdAt').limit(5).lean(),
+        Inquiry.countDocuments({ status: 'new' }),
       ]);
 
     res.json({
@@ -270,6 +290,7 @@ exports.getDashboardStats = async (req, res) => {
           totalVolunteers,
           activeVolunteers,
           pendingApplications,
+          newInquiries,
           totalHoursContributed: totalHours[0]?.total || 0
         },
         recentApplications
